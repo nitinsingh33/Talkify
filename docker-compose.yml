@@ -18,7 +18,7 @@ services:
       start_period: 20s
 
   # ── Backend (Node / Express) ─────────────────────────────────────────────
-  backend:
+  server:
     build:
       context: ./server
     restart: unless-stopped
@@ -33,7 +33,7 @@ services:
         condition: service_healthy
 
   # ── Frontend (Vite build → nginx) ─────────────────────────────────────────
-  frontend:
+  client:
     build:
       context: ./client
       args:
@@ -43,7 +43,7 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      - server
 
 volumes:
   mongo_data:

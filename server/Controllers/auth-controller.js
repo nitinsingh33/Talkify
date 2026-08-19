@@ -190,9 +190,6 @@ const authUser = async (req, res) => {
   }
 };
 
-console.log("EMAIL:", EMAIL);
-console.log("PASSWORD EXISTS:", !!PASSWORD);
-console.log("SMTP transporter ready");
 const sendotp = async (req, res) => {
   try {
     console.log("sendotp request received");
@@ -211,15 +208,15 @@ const sendotp = async (req, res) => {
     await user.save();
 
     let mailDetails = {
-      from: `"Conversa" <${EMAIL}>`,
+      from: `"Talkify" <${EMAIL}>`,
       to: email,
-      subject: "Your Conversa Login OTP - " + otp,
+      subject: "Your Talkify Login OTP - " + otp,
       html: `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Your Conversa OTP</title>
+    <title>Your Talkify OTP</title>
   </head>
   <body style="margin:0;padding:0;background-color:#f0f2f5;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
     <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f2f5;padding:40px 0;">
@@ -230,7 +227,7 @@ const sendotp = async (req, res) => {
         <!-- Header -->
         <tr>
         <td align="center" style="background-color:#6366f1;padding:36px 40px;">
-          <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Conversa</h1>
+          <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Talkify</h1>
           <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">online chatting platform</p>
         </td>
         </tr>
@@ -240,7 +237,7 @@ const sendotp = async (req, res) => {
         <td style="padding:40px 40px 32px;">
           <p style="margin:0 0 8px;font-size:15px;color:#374151;">Hello,</p>
           <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.6;">
-          We received a request to sign in to your Conversa account. Use the one-time password below to complete your login.
+          We received a request to sign in to your Talkify account. Use the one-time password below to complete your login.
           </p>
 
           <!-- OTP Box -->
@@ -278,7 +275,7 @@ const sendotp = async (req, res) => {
         <tr>
         <td align="center" style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;">
           <p style="margin:0;font-size:12px;color:#9ca3af;">
-          &copy; ${new Date().getFullYear()} Conversa. All rights reserved.
+          &copy; ${new Date().getFullYear()} Talkify. All rights reserved.
           </p>
           <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">
           This is an automated message — please do not reply.
@@ -295,7 +292,6 @@ const sendotp = async (req, res) => {
     };
 
     // Use promise-based approach
-    console.log("Attempting to send OTP email to:", email);
     try {
       await mailTransporter.sendMail(mailDetails);
       return res.status(200).json({ message: "OTP sent" });
@@ -324,9 +320,9 @@ const sendVerificationOtp = async (req, res) => {
     await user.save();
 
     const mailDetails = {
-      from: `"Conversa" <${EMAIL}>`,
+      from: `"Talkify" <${EMAIL}>`,
       to: user.email,
-      subject: `Verify your Conversa email – OTP: ${otp}`,
+      subject: `Verify your Talkify email – OTP: ${otp}`,
       html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -341,7 +337,7 @@ const sendVerificationOtp = async (req, res) => {
         <table width="520" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
           <tr>
             <td align="center" style="background-color:#6366f1;padding:36px 40px;">
-              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Conversa</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Talkify</h1>
               <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Verify your email address</p>
             </td>
           </tr>
@@ -349,7 +345,7 @@ const sendVerificationOtp = async (req, res) => {
             <td style="padding:40px 40px 32px;">
               <p style="margin:0 0 8px;font-size:15px;color:#374151;">Hello ${user.name},</p>
               <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.6;">
-                Please use the OTP below to verify your email address and unlock full access to Conversa.
+                Please use the OTP below to verify your email address and unlock full access to Talkify.
               </p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
@@ -370,7 +366,7 @@ const sendVerificationOtp = async (req, res) => {
                 <tr>
                   <td style="background-color:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 6px 6px 0;padding:12px 16px;">
                     <p style="margin:0;font-size:13px;color:#92400e;">
-                      If you did not sign up for Conversa, you can safely ignore this email.
+                      If you did not sign up for Talkify, you can safely ignore this email.
                     </p>
                   </td>
                 </tr>
@@ -379,7 +375,7 @@ const sendVerificationOtp = async (req, res) => {
           </tr>
           <tr>
             <td align="center" style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;">&copy; ${new Date().getFullYear()} Conversa. All rights reserved.</p>
+              <p style="margin:0;font-size:12px;color:#9ca3af;">&copy; ${new Date().getFullYear()} Talkify. All rights reserved.</p>
               <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">This is an automated message — please do not reply.</p>
             </td>
           </tr>

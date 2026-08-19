@@ -13,7 +13,7 @@ const User = require("../Models/User");
 const Conversation = require("../Models/Conversation");
 const Message = require("../Models/Message");
 
-const TEST_EMAIL_SUFFIX = "@conversa-test.dev";
+const TEST_EMAIL_SUFFIX = "@talkify-test.dev";
 
 const run = async () => {
     await connectDB();

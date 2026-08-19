@@ -12,7 +12,7 @@ const bcrypt = require("bcryptjs");
 const connectDB = require("../db");
 const User = require("../Models/User");
 
-const TEST_EMAIL_SUFFIX = "@conversa-test.dev";
+const TEST_EMAIL_SUFFIX = "@talkify-test.dev";
 const TEST_PASSWORD = "Test@1234"; // shared password for all test users
 
 const TEST_USERS = [

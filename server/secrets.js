@@ -12,6 +12,7 @@ const PASSWORD = process.env.PASSWORD;
 const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
 const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY;
 const AWS_SECRET = process.env.AWS_SECRET;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL =
   process.env.FRONTEND_URL || "https://talkify-wine.vercel.app";
 
@@ -26,6 +27,8 @@ module.exports = {
   GEMINI_MODEL,
   EMAIL,
   PASSWORD,
+  RESEND_API_KEY,
   AWS_BUCKET_NAME,
   FRONTEND_URL,
 };
+

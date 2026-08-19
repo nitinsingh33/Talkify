@@ -1,26 +1,9 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const User = require("../Models/User.js");
 const Conversation = require("../Models/Conversation.js");
-const { JWT_SECRET, EMAIL, PASSWORD } = require("../secrets.js");
-
-let mailTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: {
-    user: EMAIL,
-    pass: PASSWORD,
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 120000,
-  greetingTimeout: 120000,
-  socketTimeout: 120000
-});
+const { JWT_SECRET } = require("../secrets.js");
+const sendEmail = require("../utils/sendEmail.js");
 
 
 const register = async (req, res) => {
@@ -211,93 +194,90 @@ const sendotp = async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
     await user.save();
 
-    let mailDetails = {
-      from: `"Talkify" <${EMAIL}>`,
-      to: email,
-      subject: "Your Talkify Login OTP - " + otp,
-      html: `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Your Talkify OTP</title>
-  </head>
-  <body style="margin:0;padding:0;background-color:#f0f2f5;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f2f5;padding:40px 0;">
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Your Talkify OTP</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f0f2f5;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f2f5;padding:40px 0;">
     <tr>
       <td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-
-        <!-- Header -->
-        <tr>
-        <td align="center" style="background-color:#6366f1;padding:36px 40px;">
-          <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Talkify</h1>
-          <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">online chatting platform</p>
-        </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-        <td style="padding:40px 40px 32px;">
-          <p style="margin:0 0 8px;font-size:15px;color:#374151;">Hello,</p>
-          <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.6;">
-          We received a request to sign in to your Talkify account. Use the one-time password below to complete your login.
-          </p>
-
-          <!-- OTP Box -->
-          <table width="100%" cellpadding="0" cellspacing="0">
+        <table width="520" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <!-- Header -->
           <tr>
-            <td align="center" style="background-color:#f5f3ff;border:2px dashed #8b5cf6;border-radius:10px;padding:24px;">
-            <p style="margin:0 0 6px;font-size:12px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;">One-Time Password</p>
-            <p style="margin:0;font-size:42px;font-weight:800;letter-spacing:10px;color:#6366f1;">${otp}</p>
+            <td align="center" style="background-color:#6366f1;padding:36px 40px;">
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Talkify</h1>
+              <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">online chatting platform</p>
             </td>
           </tr>
-          </table>
 
-          <p style="margin:24px 0 0;font-size:13px;color:#6b7280;text-align:center;">
-          This OTP is valid for <strong style="color:#374151;">5 minutes</strong>. Do not share it with anyone.
-          </p>
-        </td>
-        </tr>
-
-        <!-- Warning -->
-        <tr>
-        <td style="padding:0 40px 32px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
+          <!-- Body -->
           <tr>
-            <td style="background-color:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 6px 6px 0;padding:12px 16px;">
-            <p style="margin:0;font-size:13px;color:#92400e;">
-              If you did not request this OTP, you can safely ignore this email. Your account remains secure.
-            </p>
+            <td style="padding:40px 40px 32px;">
+              <p style="margin:0 0 8px;font-size:15px;color:#374151;">Hello,</p>
+              <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.6;">
+                We received a request to sign in to your Talkify account. Use the one-time password below to complete your login.
+              </p>
+
+              <!-- OTP Box -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="background-color:#f5f3ff;border:2px dashed #8b5cf6;border-radius:10px;padding:24px;">
+                    <p style="margin:0 0 6px;font-size:12px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;">One-Time Password</p>
+                    <p style="margin:0;font-size:42px;font-weight:800;letter-spacing:10px;color:#6366f1;">${otp}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:24px 0 0;font-size:13px;color:#6b7280;text-align:center;">
+                This OTP is valid for <strong style="color:#374151;">5 minutes</strong>. Do not share it with anyone.
+              </p>
             </td>
           </tr>
-          </table>
-        </td>
-        </tr>
 
-        <!-- Footer -->
-        <tr>
-        <td align="center" style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;">
-          <p style="margin:0;font-size:12px;color:#9ca3af;">
-          &copy; ${new Date().getFullYear()} Talkify. All rights reserved.
-          </p>
-          <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">
-          This is an automated message — please do not reply.
-          </p>
-        </td>
-        </tr>
+          <!-- Warning -->
+          <tr>
+            <td style="padding:0 40px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 6px 6px 0;padding:12px 16px;">
+                    <p style="margin:0;font-size:13px;color:#92400e;">
+                      If you did not request this OTP, you can safely ignore this email. Your account remains secure.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-      </table>
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;">
+                &copy; ${new Date().getFullYear()} Talkify. All rights reserved.
+              </p>
+              <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">
+                This is an automated message — please do not reply.
+              </p>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
-    </table>
-  </body>
-  </html>`,
-    };
+  </table>
+</body>
+</html>`;
 
-    // Use promise-based approach
+    // Send OTP email
     try {
-      await mailTransporter.sendMail(mailDetails);
+      await sendEmail({
+        to: email,
+        subject: `Your Talkify Login OTP is ${otp}`,
+        html,
+      });
       return res.status(200).json({ message: "OTP sent" });
     } catch (err) {
       console.error("Mail error:", err);
@@ -323,11 +303,7 @@ const sendVerificationOtp = async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await user.save();
 
-    const mailDetails = {
-      from: `"Talkify" <${EMAIL}>`,
-      to: user.email,
-      subject: `Verify your Talkify email – OTP: ${otp}`,
-      html: `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -388,11 +364,14 @@ const sendVerificationOtp = async (req, res) => {
     </tr>
   </table>
 </body>
-</html>`,
-    };
+</html>`;
 
     try {
-      await mailTransporter.sendMail(mailDetails);
+      await sendEmail({
+        to: user.email,
+        subject: `Verify your Talkify email – OTP: ${otp}`,
+        html,
+      });
       return res.status(200).json({ message: "Verification OTP sent" });
     } catch (err) {
       console.error("Mail error:", err);

@@ -10,22 +10,9 @@
  *    with zero extra latency.
  */
 
-const nodemailer = require("nodemailer");
-const { EMAIL, PASSWORD, FRONTEND_URL } = require("../secrets.js");
+const sendEmail = require("./sendEmail.js");
+const { FRONTEND_URL } = require("../secrets.js");
 
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    family: 4,
-    auth: { user: EMAIL, pass: PASSWORD },
-    tls: {
-      rejectUnauthorized: false
-    },
-    connectionTimeout: 120000,
-    greetingTimeout: 120000,
-    socketTimeout: 120000,
-});
 
 /**
  * @param {{ name: string, email: string }} receiver
@@ -120,16 +107,13 @@ const sendMessageEmail = (receiver, sender, messageText, conversationId) => {
 </html>`;
 
     // Intentionally NOT awaited — fire and forget
-    transporter
-        .sendMail({
-            from: `"Talkify" <${EMAIL}>`,
-            to: receiver.email,
-            subject: `💬 ${sender.name} sent you a message on Talkify`,
-            html,
-        })
-        .catch((err) => {
-            console.error("[sendMessageEmail] Failed to send notification email:", err.message);
-        });
+    sendEmail({
+        to: receiver.email,
+        subject: `💬 ${sender.name} sent you a message on Talkify`,
+        html,
+    }).catch((err) => {
+        console.error("[sendMessageEmail] Failed to send notification email:", err.message);
+    });
 };
 
 module.exports = sendMessageEmail;

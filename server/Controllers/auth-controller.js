@@ -190,6 +190,9 @@ const authUser = async (req, res) => {
   }
 };
 
+console.log("EMAIL:", EMAIL);
+console.log("PASSWORD EXISTS:", !!PASSWORD);
+console.log("SMTP transporter ready");
 const sendotp = async (req, res) => {
   try {
     console.log("sendotp request received");
@@ -292,6 +295,7 @@ const sendotp = async (req, res) => {
     };
 
     // Use promise-based approach
+    console.log("Attempting to send OTP email to:", email);
     try {
       await mailTransporter.sendMail(mailDetails);
       return res.status(200).json({ message: "OTP sent" });

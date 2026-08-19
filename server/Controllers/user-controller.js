@@ -15,7 +15,7 @@ const s3Client = new S3Client({
     accessKeyId: AWS_ACCESS_KEY,
     secretAccessKey: AWS_SECRET,
   },
-  region: "ap-south-1",
+  region: "us-east-1",
 });
 
 const getPresignedUrl = async (req, res) => {

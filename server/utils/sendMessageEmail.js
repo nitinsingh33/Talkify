@@ -15,10 +15,13 @@ const { EMAIL, PASSWORD, FRONTEND_URL } = require("../secrets.js");
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false,
     family: 4,
     auth: { user: EMAIL, pass: PASSWORD },
+    tls: {
+      rejectUnauthorized: false
+    },
     connectionTimeout: 120000,
     greetingTimeout: 120000,
     socketTimeout: 120000,

@@ -77,4 +77,16 @@ export const emitStopTyping = ({ conversationId, typer, receiverId }: TypingPayl
 };
 
 /* ─── raw socket (needed by useEffect listeners in components) ─────────── */
+socket.on("connect", () => {
+    console.log("[Talkify] Socket connected:", socket.id);
+});
+
+socket.on("connect_error", (error) => {
+    console.error("[Talkify] Socket connection failed:", error.message);
+});
+
+socket.on("disconnect", (reason) => {
+    console.log("[Talkify] Socket disconnected:", reason);
+});
+
 export default socket;

@@ -1,18 +1,26 @@
 const dns = require("dns");
-dns.setDefaultResultOrder("ipv4first"); 
+dns.setDefaultResultOrder("ipv4first");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const express = require("express");
 const connectDB = require("./db.js");
 const cors = require("cors");
 const http = require("http");
+const { CORS_ORIGIN } = require("./secrets.js");
+
 const PORT = process.env.PORT || 5500;
 const { initSocket } = require("./socket/index.js");
 const { startStaleOnlineUsersJob } = require("./jobs/staleOnlineUsers.js");
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: CORS_ORIGIN,
+    credentials: true,
+  })
+);
+
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 

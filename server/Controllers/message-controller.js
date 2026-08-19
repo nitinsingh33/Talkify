@@ -7,7 +7,9 @@ const {
   GEMINI_API_KEY,
 } = require("../secrets.js");
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const ai = GEMINI_API_KEY
+  ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+  : null;
 
 const allMessage = async (req, res) => {
   try {
@@ -59,16 +61,7 @@ const allMessage = async (req, res) => {
   }
 };
 
-/**
- * DELETE /api/message/:id
- * body: { scope: "me" | "everyone" }
- *
- * scope="everyone"  — soft-delete: sets softDeleted=true, visible to all as tombstone.
- *                     Only the original sender may do this.
- * scope="me"        — hard-delete for caller: adds caller to hiddenFrom so the
- *                     message (or tombstone) is skipped when queried for them.
- *                     Available for both own and received messages.
- */
+
 const deleteMessage = async (req, res) => {
   const { scope } = req.body;
   if (!scope || !['me', 'everyone'].includes(scope)) {
@@ -100,11 +93,7 @@ const deleteMessage = async (req, res) => {
   }
 };
 
-/**
- * POST /api/message/clear/:conversationId
- * Adds the requesting user to hiddenFrom for every message in the conversation,
- * effectively clearing the entire chat history from their view.
- */
+
 const clearChat = async (req, res) => {
   try {
     const conversation = await Conversation.findById(req.params.conversationId);
@@ -130,13 +119,7 @@ const clearChat = async (req, res) => {
   }
 };
 
-/**
- * Async generator that:
- * 1. Saves the user message to DB immediately → yields { type: "user-message", message }
- * 2. Streams the Gemini response chunk-by-chunk → yields { type: "chunk", text }
- * 3. Saves the completed bot message → yields { type: "done", message }
- * Yields { type: "error" } on failure so the caller can clean up.
- */
+
 const streamAiResponse = async function* (text, senderId, conversationId) {
   const conv = await Conversation.findById(conversationId);
   const botMember = await User.findOne({
@@ -171,10 +154,16 @@ const streamAiResponse = async function* (text, senderId, conversationId) {
       parts: [{ text: m.text }],
     }));
 
+  if (!ai) {
+  console.error("Gemini API key is missing on the backend.");
+  yield { type: "error" };
+  return;
+  }
+
   const chat = ai.chats.create({
     model: GEMINI_MODEL,
     history,
-    config: { temperature: 0.5, maxOutputTokens: 1024 },
+    config: { maxOutputTokens: 1024 },
   });
 
   let fullText = "";
@@ -347,12 +336,7 @@ const toggleStar = async (req, res) => {
   }
 };
 
-/**
- * GET /api/message/starred
- * Returns all messages starred by the requesting user, newest first.
- * Each message includes a populated conversationId so the client knows
- * which chat to navigate to.
- */
+
 const getStarredMessages = async (req, res) => {
   try {
     const messages = await Message.find({

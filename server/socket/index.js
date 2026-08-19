@@ -5,10 +5,7 @@ const { CORS_ORIGIN, JWT_SECRET } = require("../secrets");
 
 let io;
 
-// Tracks how many sockets each user currently has open.
-// Map<userId: string, Set<socketId: string>>
-// Used so we only mark a user offline when their LAST socket disconnects
-// (handles multiple tabs / devices).
+
 const userSocketMap = new Map();
 
 const initSocket = (server) => {
@@ -16,6 +13,7 @@ const initSocket = (server) => {
     cors: {
       origin: CORS_ORIGIN,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
   console.log("Socket.io initialized");

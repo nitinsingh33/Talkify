@@ -2,9 +2,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# VITE_API_URL must be baked in at build time
+# VITE_API_URL and VITE_SENTRY_DSN must be baked in at build time
 ARG VITE_API_URL
+ARG VITE_SENTRY_DSN
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 
 COPY package*.json ./
 RUN npm ci

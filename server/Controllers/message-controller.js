@@ -6,6 +6,7 @@ const {
   GEMINI_MODEL,
   GEMINI_API_KEY,
 } = require("../secrets.js");
+const logger = require("../utils/logger.js");
 
 const ai = GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
@@ -56,7 +57,7 @@ const allMessage = async (req, res) => {
 
     res.json(sanitized);
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "Message controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -88,7 +89,7 @@ const deleteMessage = async (req, res) => {
     await message.save();
     res.status(200).json(message);
   } catch (error) {
-    console.log(error.message);
+    logger.error({ err: error }, "Message controller error");
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -114,7 +115,7 @@ const clearChat = async (req, res) => {
 
     res.status(200).json({ message: 'Chat cleared' });
   } catch (error) {
-    console.log(error.message);
+    logger.error({ err: error }, "Message controller error");
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -155,7 +156,7 @@ const streamAiResponse = async function* (text, senderId, conversationId) {
     }));
 
   if (!ai) {
-  console.error("Gemini API key is missing on the backend.");
+  logger.error("Gemini API key is missing on the backend.");
   yield { type: "error" };
   return;
   }
@@ -177,7 +178,7 @@ const streamAiResponse = async function* (text, senderId, conversationId) {
       }
     }
   } catch (err) {
-    console.error("Gemini stream error:", err.message);
+    logger.error({ err }, "Gemini stream error");
     // Roll back the user message so the conversation stays consistent
     await Message.findByIdAndDelete(userMessage._id);
     yield { type: "error", userMessageId: userMessage._id.toString() };
@@ -319,7 +320,7 @@ const deleteMessageHandler = async ({ messageId, scope, requesterId }) => {
     await message.save();
     return message;
   } catch (error) {
-    console.log(error.message);
+    logger.error({ err: error }, "Message controller error");
     return false;
   }
 };
@@ -341,7 +342,7 @@ const bulkHide = async (req, res) => {
     );
     res.status(200).json({ message: 'Messages hidden' });
   } catch (error) {
-    console.log(error.message);
+    logger.error({ err: error }, "Message controller error");
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -371,7 +372,7 @@ const toggleStar = async (req, res) => {
     await message.save();
     res.status(200).json({ isStarred: !alreadyStarred, starredBy: message.starredBy });
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "Message controller error");
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -397,7 +398,7 @@ const getStarredMessages = async (req, res) => {
 
     res.json(messages);
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "Message controller error");
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

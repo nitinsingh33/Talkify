@@ -4,6 +4,7 @@ const User = require("../Models/User.js");
 const Conversation = require("../Models/Conversation.js");
 const { JWT_SECRET } = require("../secrets.js");
 const sendEmail = require("../utils/sendEmail.js");
+const logger = require("../utils/logger.js");
 
 
 const register = async (req, res) => {
@@ -20,7 +21,7 @@ const register = async (req, res) => {
   let botUser = null;
 
   try {
-    console.log("register request received");
+    logger.debug("register request received");
 
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -92,15 +93,15 @@ const register = async (req, res) => {
       if (botUser) await User.findByIdAndDelete(botUser._id);
     } catch (cleanupError) {
       // Log but don't mask the original error
-      console.error("Cleanup after failed registration also failed:", cleanupError.message);
+      logger.error({ err: cleanupError }, "Cleanup after failed registration also failed");
     }
-    console.error(error.message);
+    logger.error({ err: error }, "Registration failed");
     res.status(500).send("Internal Server Error");
   }
 };
 
 const login = async (req, res) => {
-  console.log("login request received");
+  logger.debug("login request received");
 
   try {
     const { email, password, otp } = req.body;
@@ -161,7 +162,7 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "Login failed");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -172,14 +173,14 @@ const authUser = async (req, res) => {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "Failed to fetch authenticated user");
     res.status(500).send("Internal Server Error");
   }
 };
 
 const sendotp = async (req, res) => {
   try {
-    console.log("sendotp request received");
+    logger.debug("sendotp request received");
     const { email } = req.body;
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
@@ -280,11 +281,11 @@ const sendotp = async (req, res) => {
       });
       return res.status(200).json({ message: "OTP sent" });
     } catch (err) {
-      console.error("Mail error:", err);
+      logger.error({ err }, "Failed to send login OTP email");
       return res.status(500).json({ message: "Failed to send OTP" });
     }
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "sendotp failed");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -374,11 +375,11 @@ const sendVerificationOtp = async (req, res) => {
       });
       return res.status(200).json({ message: "Verification OTP sent" });
     } catch (err) {
-      console.error("Mail error:", err);
+      logger.error({ err }, "Failed to send verification OTP email");
       return res.status(500).json({ message: "Failed to send OTP" });
     }
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "sendVerificationOtp failed");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -409,7 +410,7 @@ const verifyEmail = async (req, res) => {
 
     res.json({ message: "Email verified successfully" });
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error }, "verifyEmail failed");
     res.status(500).send("Internal Server Error");
   }
 };

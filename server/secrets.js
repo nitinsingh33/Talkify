@@ -1,6 +1,7 @@
 const dotenv = require("dotenv");
 dotenv.config({ path: ".env" });
 
+const NODE_ENV = process.env.NODE_ENV || "development";
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 const MONGO_URI = process.env.MONGO_URI;
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME;
@@ -15,8 +16,11 @@ const AWS_SECRET = process.env.AWS_SECRET;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL =
   process.env.FRONTEND_URL || "https://talkify-wine.vercel.app";
+// Optional — error tracking is a no-op until this is set. See README > Error Tracking.
+const SENTRY_DSN = process.env.SENTRY_DSN;
 
 module.exports = {
+  NODE_ENV,
   CORS_ORIGIN,
   MONGO_URI,
   MONGO_DB_NAME,
@@ -30,5 +34,6 @@ module.exports = {
   RESEND_API_KEY,
   AWS_BUCKET_NAME,
   FRONTEND_URL,
+  SENTRY_DSN,
 };
 

@@ -8,6 +8,7 @@ const {
   deleteMessageHandler,
 } = require("../Controllers/message-controller.js");
 const sendMessageEmail = require("../utils/sendMessageEmail.js");
+const logger = require("../utils/logger.js");
 
 // userSocketMap is Map<userId, Set<socketId>> injected from socket/index.js.
 // It is used to determine whether a user still has any open connections before
@@ -24,7 +25,7 @@ module.exports = (io, socket, userSocketMap) => {
   socket.on("setup", async () => {
     try {
       socket.join(currentUserId);
-      console.log("User joined personal room", currentUserId);
+      logger.debug(`User ${currentUserId} joined personal room`);
       socket.emit("user setup", currentUserId);
 
       await User.findByIdAndUpdate(currentUserId, { isOnline: true });
@@ -48,7 +49,7 @@ module.exports = (io, socket, userSocketMap) => {
         io.to(friendId).emit("user-online", { userId: currentUserId });
       });
     } catch (error) {
-      console.error("Error in setup handler:", error);
+      logger.error({ err: error }, "Error in setup handler");
     }
   });
 
@@ -56,7 +57,7 @@ module.exports = (io, socket, userSocketMap) => {
   socket.on("join-chat", async (data) => {
     try {
       const { roomId } = data;
-      console.log("User joined chat room", roomId);
+      logger.debug(`User ${currentUserId} joined chat room ${roomId}`);
 
       const conv = await Conversation.findById(roomId);
       if (!conv) return;
@@ -66,7 +67,7 @@ module.exports = (io, socket, userSocketMap) => {
         (m) => m.toString() === currentUserId
       );
       if (!isMember) {
-        console.warn(
+        logger.warn(
           `User ${currentUserId} tried to join conversation ${roomId} they are not a member of`
         );
         return;
@@ -104,7 +105,7 @@ module.exports = (io, socket, userSocketMap) => {
 
       io.to(roomId).emit("user-joined-room", currentUserId);
     } catch (error) {
-      console.error("Error in join-chat handler:", error);
+      logger.error({ err: error }, "Error in join-chat handler");
     }
   });
 
@@ -116,7 +117,7 @@ module.exports = (io, socket, userSocketMap) => {
   // ─── Send message ──────────────────────────────────────────────────────────
   const handleSendMessage = async (data) => {
     try {
-      console.log("Received message");
+      logger.debug("Received message");
 
       const { conversationId, text, imageUrl, replyTo } = data;
       // Always use the authenticated user as the sender — never trust client-supplied senderId
@@ -132,7 +133,7 @@ module.exports = (io, socket, userSocketMap) => {
         (m) => m._id.toString() === senderId
       );
       if (!isMember) {
-        console.warn(
+        logger.warn(
           `User ${senderId} tried to send to conversation ${conversationId} they don't belong to`
         );
         return;
@@ -183,7 +184,7 @@ module.exports = (io, socket, userSocketMap) => {
             }
           }
         } catch (err) {
-          console.error("Bot streaming error:", err);
+          logger.error({ err }, "Bot streaming error");
           io.to(conversationId).emit("stop-typing", { typer: botId, conversationId });
           io.to(conversationId).emit("bot-error", { conversationId, userMessageId: null });
         }
@@ -252,7 +253,7 @@ module.exports = (io, socket, userSocketMap) => {
       conversation.latestmessage = text || "sent an image";
 
       if (!isReceiverInsideChatRoom) {
-        console.log("Emitting new message notification to:", receiverId.toString());
+        logger.debug(`Emitting new message notification to: ${receiverId.toString()}`);
         const senderInfo = conversation.members.find(
           (m) => m._id.toString() === senderId
         );
@@ -276,7 +277,7 @@ module.exports = (io, socket, userSocketMap) => {
         }
       }
     } catch (error) {
-      console.error("Error in send-message handler:", error);
+      logger.error({ err: error }, "Error in send-message handler");
     }
   };
 
@@ -338,7 +339,7 @@ module.exports = (io, socket, userSocketMap) => {
         }
       }
     } catch (error) {
-      console.error("Error in group send-message handler:", error);
+      logger.error({ err: error }, "Error in group send-message handler");
     }
   };
 
@@ -403,7 +404,7 @@ module.exports = (io, socket, userSocketMap) => {
         });
       }
     } catch (error) {
-      console.error('Error in delete-message handler:', error);
+      logger.error({ err: error }, "Error in delete-message handler");
     }
   };
 
@@ -448,7 +449,7 @@ module.exports = (io, socket, userSocketMap) => {
   // Only mark the user offline when ALL their sockets have disconnected
   // (i.e. they closed every tab/device), not just one of them.
   socket.on("disconnect", async () => {
-    console.log("Socket disconnected", socket.id, "user:", currentUserId);
+    logger.debug(`Socket disconnected ${socket.id} user: ${currentUserId}`);
     try {
       // userSocketMap is updated by socket/index.js AFTER this event fires,
       // so at this point the disconnecting socket is still in the set.
@@ -457,7 +458,7 @@ module.exports = (io, socket, userSocketMap) => {
       const isLastSocket = !sockets || sockets.size <= 1;
 
       if (!isLastSocket) {
-        console.log(
+        logger.debug(
           `User ${currentUserId} still has other sockets open — staying online`
         );
         return;
@@ -487,7 +488,7 @@ module.exports = (io, socket, userSocketMap) => {
         io.to(friendId).emit("user-offline", { userId: currentUserId });
       });
     } catch (error) {
-      console.error("Error updating user status on disconnect:", error);
+      logger.error({ err: error }, "Error updating user status on disconnect");
     }
   });
 };

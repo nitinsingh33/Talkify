@@ -20,4 +20,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn/ui vendored primitives intentionally export a component plus a
+    // cva() variants helper (or similar) from the same file — standard
+    // library pattern, not an app-code Fast Refresh concern.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

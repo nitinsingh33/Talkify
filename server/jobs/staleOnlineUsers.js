@@ -1,4 +1,5 @@
 const User = require("../Models/User.js");
+const logger = require("../utils/logger.js");
 
 const INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -32,12 +33,10 @@ const cleanupStaleOnlineUsers = async () => {
     );
 
     if (result.modifiedCount > 0) {
-      console.log(
-        `[staleOnlineUsers] Marked ${result.modifiedCount} stale user(s) as offline.`
-      );
+      logger.info(`[staleOnlineUsers] Marked ${result.modifiedCount} stale user(s) as offline.`);
     }
   } catch (error) {
-    console.error("[staleOnlineUsers] Job failed:", error.message);
+    logger.error({ err: error }, "[staleOnlineUsers] Job failed");
   }
 };
 
@@ -47,7 +46,7 @@ const cleanupStaleOnlineUsers = async () => {
  * hour.
  */
 const startStaleOnlineUsersJob = () => {
-  console.log("[staleOnlineUsers] Job started — runs every 1 hour.");
+  logger.info("[staleOnlineUsers] Job started — runs every 1 hour.");
 
   // Run once immediately on server start to clean up any leftovers from a
   // previous crash or ungraceful shutdown

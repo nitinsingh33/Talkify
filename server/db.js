@@ -3,6 +3,7 @@ dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const mongoose = require("mongoose");
 const { MONGO_URI, MONGO_DB_NAME} = require("./secrets");
+const logger = require("./utils/logger.js");
 
 const connectDB = async () => {
   try {
@@ -10,9 +11,9 @@ const connectDB = async () => {
       dbName: MONGO_DB_NAME,
     });
 
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    logger.info(`✅ MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    logger.error({ err: error }, "MongoDB connection failed");
     process.exit(1);
   }
 };

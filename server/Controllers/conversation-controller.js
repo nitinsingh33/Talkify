@@ -1,6 +1,7 @@
 const Conversation = require("../Models/Conversation.js");
 const User = require("../Models/User.js");
 const { getIO } = require("../socket/index.js");
+const logger = require("../utils/logger.js");
 
 /**
  * Notifies every member of a group (except optionally the actor) that the
@@ -17,7 +18,7 @@ function broadcastGroupUpdate(conversation) {
       });
     });
   } catch (error) {
-    console.log("Failed to broadcast group update:", error.message);
+    logger.error({ err: error }, "Failed to broadcast group update");
   }
 }
 
@@ -116,7 +117,7 @@ const createConversation = async (req, res) => {
 
     return res.status(200).json(sanitizedNew);
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     return res.status(500).send("Internal Server Error");
   }
 };
@@ -195,7 +196,7 @@ const getConversationList = async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -222,7 +223,7 @@ const togglePin = async (req, res) => {
       return res.status(200).json({ isPinned: true });
     }
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -257,7 +258,7 @@ const createGroup = async (req, res) => {
     broadcastGroupUpdate(group);
     res.status(201).json(sanitized);
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -278,7 +279,7 @@ const updateGroupInfo = async (req, res) => {
     broadcastGroupUpdate(conversation);
     res.status(200).json({ groupName: conversation.groupName, groupPic: conversation.groupPic });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -307,7 +308,7 @@ const addMembers = async (req, res) => {
     broadcastGroupUpdate(conversation);
     res.status(200).json(sanitized);
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -338,7 +339,7 @@ const removeMember = async (req, res) => {
 
     res.status(200).json({ message: "Member removed" });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -368,7 +369,7 @@ const leaveGroup = async (req, res) => {
     broadcastGroupUpdate(conversation);
     res.status(200).json({ message: "Left group" });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -389,7 +390,7 @@ const promoteAdmin = async (req, res) => {
     }
     res.status(200).json({ groupAdmins: conversation.groupAdmins });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -409,7 +410,7 @@ const demoteAdmin = async (req, res) => {
     broadcastGroupUpdate(conversation);
     res.status(200).json({ groupAdmins: conversation.groupAdmins });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "Conversation controller error");
     res.status(500).send("Internal Server Error");
   }
 };

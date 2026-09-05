@@ -37,8 +37,9 @@ services:
     build:
       context: ./client
       args:
-        # VITE_API_URL is baked into the JS bundle at build time
+        # Both are baked into the JS bundle at build time
         VITE_API_URL: ${VITE_API_URL}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
     restart: unless-stopped
     ports:
       - "80:80"

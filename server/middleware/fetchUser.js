@@ -1,10 +1,11 @@
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../secrets.js");
+const logger = require("../utils/logger.js");
 
 const fetchuser = (req, res, next) => {
   const token = req.header("auth-token");
   if (!token) {
-    console.log("token not found");
+    logger.warn("Request rejected: no auth token provided");
     return res.status(401).send("Please authenticate using a valid token");
   } else {
     try {
@@ -12,7 +13,7 @@ const fetchuser = (req, res, next) => {
       req.user = data.user;
       next();
     } catch (error) {
-      console.error(error.message);
+      logger.warn({ err: error }, "Request rejected: invalid auth token");
       return res.status(401).send("Please authenticate using a valid token");
     }
   }

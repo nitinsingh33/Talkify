@@ -12,6 +12,7 @@
 
 const sendEmail = require("./sendEmail.js");
 const { FRONTEND_URL } = require("../secrets.js");
+const logger = require("./logger.js");
 
 
 /**
@@ -112,7 +113,7 @@ const sendMessageEmail = (receiver, sender, messageText, conversationId) => {
         subject: `💬 ${sender.name} sent you a message on Talkify`,
         html,
     }).catch((err) => {
-        console.error("[sendMessageEmail] Failed to send notification email:", err.message);
+        logger.error({ err }, "Failed to send message notification email");
     });
 };
 

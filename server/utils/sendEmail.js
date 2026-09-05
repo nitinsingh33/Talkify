@@ -1,6 +1,7 @@
 const { Resend } = require("resend");
 const nodemailer = require("nodemailer");
 const { RESEND_API_KEY, EMAIL, PASSWORD } = require("../secrets.js");
+const logger = require("./logger.js");
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -38,7 +39,7 @@ const sendEmail = async ({ to, subject, html }) => {
     });
 
     if (error) {
-      console.error("[Resend Error]:", error);
+      logger.error({ err: error }, "Resend error");
       throw new Error(error.message || "Failed to send email via Resend");
     }
 

@@ -9,6 +9,7 @@ const {
   AWS_SECRET,
   AWS_ACCESS_KEY
 } = require("../secrets.js");
+const logger = require("../utils/logger.js");
 
 const s3Client = new S3Client({
   credentials: {
@@ -66,7 +67,7 @@ const getOnlineStatus = async (req, res) => {
     );
     res.status(200).json({ isOnline: isBlocked ? false : user.isOnline });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -81,7 +82,7 @@ const blockUser = async (req, res) => {
     });
     res.status(200).json({ message: "User blocked" });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -95,7 +96,7 @@ const unblockUser = async (req, res) => {
     });
     res.status(200).json({ message: "User unblocked" });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -117,7 +118,7 @@ const getBlockStatus = async (req, res) => {
     );
     res.status(200).json({ iBlockedThem, theyBlockedMe });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -194,7 +195,7 @@ const getNonFriendsList = async (req, res) => {
       page,
     });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -233,7 +234,7 @@ const getAllUsersList = async (req, res) => {
 
     res.json({ users, hasMore: skip + limit < total, total, page });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -299,7 +300,7 @@ const deleteAccount = async (req, res) => {
 
     res.status(200).json({ message: "Account deleted" });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "User controller error");
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

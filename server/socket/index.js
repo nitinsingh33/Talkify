@@ -2,6 +2,7 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const registerHandlers = require("./handlers");
 const { CORS_ORIGIN, JWT_SECRET } = require("../secrets");
+const logger = require("../utils/logger.js");
 
 let io;
 
@@ -16,7 +17,7 @@ const initSocket = (server) => {
       credentials: true,
     },
   });
-  console.log("Socket.io initialized");
+  logger.info("Socket.io initialized");
 
   // --- Authentication middleware ---
   // Every socket connection must present a valid JWT in handshake.auth.token.
@@ -36,7 +37,7 @@ const initSocket = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`New connection: ${socket.id} (user: ${socket.userId})`);
+    logger.info(`New connection: ${socket.id} (user: ${socket.userId})`);
 
     // Track this socket in the per-user set
     if (!userSocketMap.has(socket.userId)) {

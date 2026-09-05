@@ -2,36 +2,26 @@ const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-const express = require("express");
-const connectDB = require("./db.js");
-const cors = require("cors");
 const http = require("http");
-const { CORS_ORIGIN } = require("./secrets.js");
+const connectDB = require("./db.js");
+const { MONGO_URI, JWT_SECRET } = require("./secrets.js");
+const logger = require("./utils/logger.js");
+const app = require("./app.js");
+
+// Fail fast with a clear message rather than crashing later in some
+// unrelated request handler when a required secret turns out to be missing.
+const REQUIRED_ENV = { MONGO_URI, JWT_SECRET };
+const missingEnv = Object.entries(REQUIRED_ENV)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+if (missingEnv.length > 0) {
+  logger.error(`Missing required environment variable(s): ${missingEnv.join(", ")}`);
+  process.exit(1);
+}
 
 const PORT = process.env.PORT || 5500;
 const { initSocket } = require("./socket/index.js");
 const { startStaleOnlineUsersJob } = require("./jobs/staleOnlineUsers.js");
-
-const app = express();
-
-app.use(
-  cors({
-    origin: CORS_ORIGIN,
-    credentials: true,
-  })
-);
-
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(express.json({ limit: "50mb" }));
-
-// Routes
-app.get("/", (req, res) => {
-  res.send("Hello World");
-});
-app.use("/auth", require("./Routes/auth-routes.js"));
-app.use("/user", require("./Routes/user-routes.js"));
-app.use("/message", require("./Routes/message-routes.js"));
-app.use("/conversation", require("./Routes/conversation-routes.js"));
 
 // Server setup
 const server = http.createServer(app);
@@ -39,11 +29,34 @@ const server = http.createServer(app);
 // Socket.io setup
 initSocket(server); // Initialize socket.io logic
 
+// Catch anything that slips past every try/catch so the process doesn't
+// die silently or in an inconsistent state.
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "Uncaught exception");
+});
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: reason }, "Unhandled promise rejection");
+});
+
+// Give in-flight requests/sockets a chance to finish before the process
+// exits, instead of a container restart cutting them off mid-request.
+const gracefulShutdown = (signal) => {
+  logger.info(`${signal} received — shutting down gracefully`);
+  server.close(() => {
+    logger.info("HTTP server closed");
+    process.exit(0);
+  });
+  // Force-exit if close() hangs (e.g. a socket refuses to drain)
+  setTimeout(() => process.exit(1), 10_000).unref();
+};
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
 // Start server and connect to database
 const start = async () => {
   await connectDB(); // connect first
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server started at http://localhost:${PORT}`);
+    logger.info(`🚀 Server started at http://localhost:${PORT}`);
   });
   // Start background jobs after DB is ready
   startStaleOnlineUsersJob();

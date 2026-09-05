@@ -24,6 +24,10 @@ interface Props {
     receiverId: string
     myId: string
     receiverName: string
+    /** Group chats: every other member's id — used to compute "seen by all". */
+    otherMemberIds?: string[]
+    /** Group chats: the sender's display name, shown above received bubbles. */
+    senderName?: string
     onDelete: (messageId: string, scope: "me" | "everyone") => void
     onStar: (messageId: string) => void
     onReply: (message: Message) => void
@@ -39,7 +43,7 @@ function formatTime(dateStr: string) {
     return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, onDelete, onStar, onReply, selectMode, selected, onToggleSelect, highlighted }: Props) {
+export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, otherMemberIds, senderName, onDelete, onStar, onReply, selectMode, selected, onToggleSelect, highlighted }: Props) {
     const [hovered, setHovered] = useState(false)
     const [copied, setCopied] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
@@ -91,6 +95,10 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                         highlighted && "animate-highlight"
                     )}
                 >
+                    {/* Sender name — group chats only, on received messages */}
+                    {senderName && !message.softDeleted && (
+                        <p className="text-xs font-semibold text-primary mb-0.5">{senderName}</p>
+                    )}
                     {/* Reply preview — shown when this message is a reply to another */}
                     {message.replyTo && !message.softDeleted && (
                         <div
@@ -159,7 +167,8 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                     >
                         {formatTime(message.createdAt)}
                         {isMine && (() => {
-                            const seen = message.seenBy?.some((s) => s.user === receiverId)
+                            const targets = otherMemberIds && otherMemberIds.length > 0 ? otherMemberIds : [receiverId]
+                            const seen = targets.every((id) => message.seenBy?.some((s) => s.user === id))
                             return seen
                                 ? <CheckCheck className="size-3 text-sky-300 shrink-0" />
                                 : <Check className="size-3 shrink-0" />

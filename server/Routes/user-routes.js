@@ -6,6 +6,7 @@ const {
   getPresignedUrl,
   getOnlineStatus,
   getNonFriendsList,
+  getAllUsersList,
   updateprofile,
   blockUser,
   unblockUser,
@@ -16,6 +17,7 @@ const {
 router.put("/update", fetchuser, updateprofile);
 router.get("/online-status/:id", fetchuser, getOnlineStatus);
 router.get("/non-friends", fetchuser, getNonFriendsList);
+router.get("/all", fetchuser, getAllUsersList);
 router.get("/presigned-url", fetchuser, getPresignedUrl);
 router.post("/block/:id", fetchuser, blockUser);
 router.delete("/block/:id", fetchuser, unblockUser);

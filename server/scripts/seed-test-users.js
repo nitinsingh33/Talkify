@@ -67,6 +67,9 @@ const run = async () => {
             password: hashedPassword,
             about: u.about,
             profilePic,
+            // Test accounts use a non-deliverable domain — skip the verification
+            // gate so they aren't stuck at /verify-email with no way through.
+            isEmailVerified: true,
         });
 
         console.log(`  ✅ Created  ${u.name} <${email}>`);

@@ -4,6 +4,7 @@ const Message = require("../Models/Message.js");
 const {
   streamAiResponse,
   sendMessageHandler,
+  sendGroupMessageHandler,
   deleteMessageHandler,
 } = require("../Controllers/message-controller.js");
 const sendMessageEmail = require("../utils/sendMessageEmail.js");
@@ -137,6 +138,20 @@ module.exports = (io, socket, userSocketMap) => {
         return;
       }
 
+      // ── Group processing ────────────────────────────────────────────────
+      // Groups skip bot handling and pairwise block checks (blocking is a
+      // DM-only concept here) and fan the message out to every member.
+      if (conversation.isGroup) {
+        await handleSendGroupMessage(conversation, {
+          conversationId,
+          text,
+          imageUrl,
+          replyTo: replyTo || null,
+          senderId,
+        });
+        return;
+      }
+
       // ── AI bot processing ────────────────────────────────────────────────
       // Use the isBot field instead of an email-suffix heuristic.
       const botMember = conversation.members.find(
@@ -267,6 +282,66 @@ module.exports = (io, socket, userSocketMap) => {
 
   socket.on("send-message", handleSendMessage);
 
+  // ─── Group send ─────────────────────────────────────────────────────────
+  const handleSendGroupMessage = async (conversation, { conversationId, text, imageUrl, replyTo, senderId }) => {
+    try {
+      const memberIds = conversation.members.map((m) => m._id.toString());
+      const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
+      const membersInRoom = new Set();
+      memberIds.forEach((uid) => {
+        const socketIds = userSocketMap.get(uid);
+        if (
+          socketIds &&
+          conversationRoom &&
+          Array.from(socketIds).some((sid) => conversationRoom.has(sid))
+        ) {
+          membersInRoom.add(uid);
+        }
+      });
+
+      const message = await sendGroupMessageHandler({
+        text,
+        imageUrl,
+        senderId,
+        conversationId,
+        memberIds,
+        membersInRoom,
+        replyTo,
+      });
+
+      io.to(conversationId).emit("receive-message", message);
+
+      const senderInfo = conversation.members.find((m) => m._id.toString() === senderId);
+
+      // Notify every member who isn't currently viewing this conversation
+      for (const uid of memberIds) {
+        if (uid === senderId || membersInRoom.has(uid)) continue;
+
+        io.to(uid).emit("new-message-notification", {
+          message,
+          sender: senderInfo,
+          conversation,
+        });
+
+        const memberSockets = userSocketMap.get(uid);
+        const isOffline = !memberSockets || memberSockets.size === 0;
+        if (isOffline) {
+          const memberDoc = await User.findById(uid, "email name emailNotificationsEnabled");
+          if (memberDoc?.emailNotificationsEnabled && memberDoc?.email) {
+            sendMessageEmail(
+              { name: memberDoc.name, email: memberDoc.email },
+              { name: `${senderInfo.name} in ${conversation.groupName}`, profilePic: senderInfo.profilePic },
+              text || null,
+              conversationId
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in group send-message handler:", error);
+    }
+  };
+
   // ─── Delete message ────────────────────────────────────────────────────────
   // scope="everyone": soft-delete → shows tombstone to all. Broadcast to room.
   // scope="me":       hard-delete for sender only → no broadcast (only caller hides it).
@@ -339,27 +414,30 @@ module.exports = (io, socket, userSocketMap) => {
   // to the receiver's personal room if they are online but not currently viewing
   // this conversation (so they can show a subtle indicator in the chat list).
   const emitTypingEvent = (event, data) => {
-    const { conversationId, receiverId } = data;
+    const { conversationId, receiverId, memberIds } = data;
 
     // Always notify users already inside the room
     io.to(conversationId).emit(event, data);
 
-    if (!receiverId) return;
+    // Groups pass memberIds (every other member); 1:1 chats pass a single
+    // receiverId — normalize to one list of targets.
+    const targets = Array.isArray(memberIds) && memberIds.length ? memberIds : receiverId ? [receiverId] : [];
+    if (targets.length === 0) return;
 
-    // Check if receiver is online
-    const receiverSockets = userSocketMap.get(receiverId.toString());
-    if (!receiverSockets || receiverSockets.size === 0) return; // offline
-
-    // Check if ANY of their sockets are inside the conversation room
     const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
-    const isInsideRoom =
-      conversationRoom &&
-      Array.from(receiverSockets).some((sid) => conversationRoom.has(sid));
 
-    if (!isInsideRoom) {
-      // Online but not viewing this chat — emit to their personal room
-      io.to(receiverId.toString()).emit(event, data);
-    }
+    targets.forEach((uid) => {
+      const sockets = userSocketMap.get(uid.toString());
+      if (!sockets || sockets.size === 0) return; // offline
+
+      const isInsideRoom =
+        conversationRoom && Array.from(sockets).some((sid) => conversationRoom.has(sid));
+
+      if (!isInsideRoom) {
+        // Online but not viewing this chat — emit to their personal room
+        io.to(uid.toString()).emit(event, data);
+      }
+    });
   };
 
   socket.on("typing", (data) => emitTypingEvent("typing", data));

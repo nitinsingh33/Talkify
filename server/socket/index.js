@@ -60,4 +60,6 @@ const initSocket = (server) => {
   return io;
 };
 
-module.exports = { initSocket };
+const getIO = () => io;
+
+module.exports = { initSocket, getIO };

@@ -134,6 +134,9 @@ export default function ConversationDetail() {
     // Streaming bot response state
     const [streamingBot, setStreamingBot] = useState<{ conversationId: string; tempId: string; text: string } | null>(null)
 
+    // Group conversation state — null for 1:1 chats
+    const [groupConversation, setGroupConversation] = useState<Conversation | null>(null)
+
     // Reply state
     const [replyingTo, setReplyingTo] = useState<Message | null>(null)
 
@@ -246,8 +249,14 @@ export default function ConversationDetail() {
             messageApi.list(id) as Promise<Message[]>,
         ])
             .then(([conv, msgs]) => {
-                const other = conv.members.find((m: User) => m._id !== user._id)
-                setReceiver(other ?? null)
+                if (conv.isGroup) {
+                    setReceiver(null)
+                    setGroupConversation(conv)
+                } else {
+                    const other = conv.members.find((m: User) => m._id !== user._id)
+                    setReceiver(other ?? null)
+                    setGroupConversation(null)
+                }
                 // Apply any messages-seen events that arrived before the list was ready
                 const pending = pendingSeenRef.current
                 const mergedMsgs = pending.length === 0 ? msgs : msgs.map((m) => {
@@ -333,8 +342,21 @@ export default function ConversationDetail() {
             emitLeaveChat(id)
             setActiveChatId("")
             setReceiver(null)
+            setGroupConversation(null)
         }
     }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── socket: group info/membership changed — refetch ──────────────────
+    useEffect(() => {
+        const onGroupUpdated = (data: { conversationId: string; removed?: boolean }) => {
+            if (data.conversationId !== id || data.removed) return
+            conversationApi.get<Conversation>(id!)
+                .then((conv) => { if (conv.isGroup) setGroupConversation(conv) })
+                .catch(() => {/* silent — non-critical */})
+        }
+        socket.on("group-updated", onGroupUpdated)
+        return () => { socket.off("group-updated", onGroupUpdated) }
+    }, [id])
 
     // ── socket: receive-message ─────────────────────────────────────────
     useEffect(() => {
@@ -565,6 +587,15 @@ export default function ConversationDetail() {
         }
     }, [selectedIds, exitSelectMode, setMessageList])
 
+    // ── group chat derived values ─────────────────────────────────────────
+    const isGroup = !!groupConversation
+    const otherMemberIds = isGroup
+        ? groupConversation!.members.filter((m) => m._id !== user?._id).map((m) => m._id)
+        : receiver ? [receiver._id] : []
+    const membersById: Record<string, User> = isGroup
+        ? Object.fromEntries(groupConversation!.members.map((m) => [m._id, m]))
+        : {}
+
     // ── group messages by date for dividers ─────────────────────────────
     const grouped: Array<Message | string> = []
     let lastDate = ""
@@ -584,6 +615,9 @@ export default function ConversationDetail() {
             {/* Header */}
             <ConversationDetailHeader
                 receiver={receiver}
+                group={groupConversation}
+                myId={user?._id ?? ""}
+                onGroupUpdated={setGroupConversation}
                 onClearChat={handleClearChat}
                 onSelectMode={enterSelectMode}
                 isBlockedByMe={blockStatus.iBlockedThem}
@@ -618,6 +652,8 @@ export default function ConversationDetail() {
                                 receiverId={receiver?._id ?? ""}
                                 myId={user?._id ?? ""}
                                 receiverName={receiver?.name ?? ""}
+                                otherMemberIds={otherMemberIds}
+                                senderName={isGroup && !isMine ? membersById[msg.senderId]?.name : undefined}
                                 onDelete={handleDelete}
                                 onStar={handleStar}
                                 onReply={setReplyingTo}
@@ -645,7 +681,8 @@ export default function ConversationDetail() {
                     conversationId={id}
                     myId={user._id}
                     receiverId={receiver?._id ?? ""}
-                    receiverName={receiver?.name ?? ""}
+                    receiverName={isGroup ? (groupConversation?.groupName ?? "the group") : (receiver?.name ?? "")}
+                    otherMemberIds={otherMemberIds}
                     isReceiverBot={receiver?.isBot ?? false}
                     isBlocked={blockStatus.iBlockedThem}
                     blockedByThem={blockStatus.theyBlockedMe}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Search, MessageCircle, Bot, SquarePen, ChevronDown, Trash2, ShieldX, Pin, PinOff } from "lucide-react"
+import { Search, MessageCircle, Bot, SquarePen, Users, ChevronDown, Trash2, ShieldX, Pin, PinOff, LogOut } from "lucide-react"
 import { useConversations, type Conversation } from "@/hooks/use-conversations"
 import { useAuth } from "@/hooks/use-auth"
 import { useChat } from "@/hooks/use-chat"
@@ -21,6 +21,7 @@ import socket from "@/lib/socket"
 import type { User } from "@/hooks/use-auth"
 import { Button } from "../ui/button"
 import NewChatDialog from "./NewChatDialog"
+import NewGroupDialog from "./NewGroupDialog"
 
 /* ─── helpers ──────────────────────────────────────────────────────────── */
 
@@ -74,13 +75,15 @@ interface RowProps {
     onToggleBlock: (userId: string, userName: string, isBlocked: boolean) => Promise<void>
     onClearChat: (convId: string) => Promise<void>
     onTogglePin: (convId: string) => Promise<void>
+    onLeaveGroup: (convId: string, groupName: string) => Promise<void>
     blockedUsers: Set<string>
 }
 
-function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, onTogglePin, blockedUsers }: RowProps) {
-    const other = getOtherMember(conv, myId)
+function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, onTogglePin, onLeaveGroup, blockedUsers }: RowProps) {
+    const isGroup = !!conv.isGroup
+    const other = isGroup ? undefined : getOtherMember(conv, myId)
     const unread = conv.unreadCounts.find((u) => u.userId === myId)?.count ?? 0
-    const name = other?.name ?? "Unknown"
+    const name = isGroup ? (conv.groupName ?? "Group") : (other?.name ?? "Unknown")
     const preview = isTyping
         ? "typing…"
         : conv.latestmessage || "Start a conversation"
@@ -104,7 +107,7 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                         onOpenChange={(open) => setOpenDropdownId(open ? conv._id : null)}
                     >
                         <DropdownMenuTrigger asChild>
-                            <button className="flex items-center justify-center size-5 rounded-md 
+                            <button className="flex items-center justify-center size-5 rounded-md
                             bg-gray-200/60 hover:bg-gray-200/90
                             dark:bg-sidebar-accent dark:text-muted-foreground dark:hover:text-foreground">
                                 <ChevronDown className="size-3" />
@@ -117,13 +120,23 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                                 {isPinned ? "Unpin" : "Pin"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={(e) => { e.stopPropagation(); onToggleBlock(other!._id, other!.name, isBlocked) }}
-                                variant="destructive"
-                            >
-                                <ShieldX className="size-4" />
-                                {isBlocked ? "Unblock user" : "Block user"}
-                            </DropdownMenuItem>
+                            {isGroup ? (
+                                <DropdownMenuItem
+                                    onClick={(e) => { e.stopPropagation(); onLeaveGroup(conv._id, name) }}
+                                    variant="destructive"
+                                >
+                                    <LogOut className="size-4" />
+                                    Leave group
+                                </DropdownMenuItem>
+                            ) : (
+                                <DropdownMenuItem
+                                    onClick={(e) => { e.stopPropagation(); onToggleBlock(other!._id, other!.name, isBlocked) }}
+                                    variant="destructive"
+                                >
+                                    <ShieldX className="size-4" />
+                                    {isBlocked ? "Unblock user" : "Block user"}
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onClearChat(conv._id) }}
                                 variant="destructive"
@@ -150,13 +163,13 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                 {/* avatar */}
                 <div className="relative shrink-0">
                     <Avatar className="size-10 border border-primary/30 shadow-sm">
-                        <AvatarImage src={other?.profilePic} alt={name} />
+                        <AvatarImage src={isGroup ? conv.groupPic : other?.profilePic} alt={name} />
                         <AvatarFallback className="bg-linear-to-br from-primary/30 to-primary/15 text-xs font-semibold text-primary">
-                            {other?.isBot ? <Bot className="size-4" /> : initials(name)}
+                            {isGroup ? <Users className="size-4" /> : other?.isBot ? <Bot className="size-4" /> : initials(name)}
                         </AvatarFallback>
                     </Avatar>
                     {/* online dot */}
-                    {(other?.isBot || other?.isOnline) && (
+                    {!isGroup && (other?.isBot || other?.isOnline) && (
                         <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-green-500 ring-2 ring-sidebar" />
                     )}
                 </div>
@@ -209,6 +222,7 @@ export default function ConversationsList() {
     const [query, setQuery] = useState("")
     const [filter, setFilter] = useState<"all" | "unread" | "online">("all")
     const [newChatOpen, setNewChatOpen] = useState(false)
+    const [newGroupOpen, setNewGroupOpen] = useState(false)
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
     const [blockedUsers, setBlockedUsers] = useState<Set<string>>(
         () => new Set((user?.blockedUsers ?? []).map(String))
@@ -240,6 +254,18 @@ export default function ConversationsList() {
             toast.success("Chat cleared")
         } catch {
             toast.error("Failed to clear chat")
+        }
+    }
+
+    // leave a group from the conversations list
+    const handleLeaveGroup = async (convId: string, groupName: string) => {
+        try {
+            await conversationApi.leaveGroup(convId)
+            setConversationsList((prev) => prev.filter((c) => c._id !== convId))
+            setOpenDropdownId(null)
+            toast.success(`Left "${groupName}"`)
+        } catch {
+            toast.error("Failed to leave group")
         }
     }
 
@@ -295,15 +321,30 @@ export default function ConversationsList() {
         }
     }, [user, setConversationsList])
 
+    // Socket: group membership/info changed somewhere — refetch the list.
+    // If we were removed from a group we're currently viewing, bounce back.
+    useEffect(() => {
+        const onGroupUpdated = (data: { conversationId: string; removed?: boolean }) => {
+            fetchConversations()
+            if (data.removed && data.conversationId === activeId) {
+                toast.info("You were removed from this group")
+                navigate("/user/conversations")
+            }
+        }
+        socket.on("group-updated", onGroupUpdated)
+        return () => { socket.off("group-updated", onGroupUpdated) }
+    }, [fetchConversations, activeId, navigate])
+
     // Derive displayed list (search + tab filter applied to freshest conversationsList)
     const displayList = conversationsList.filter((conv) => {
         const other = getOtherMember(conv, user?._id ?? "")
-        if (query.trim() && !other?.name.toLowerCase().includes(query.toLowerCase())) return false
+        const displayName = conv.isGroup ? conv.groupName ?? "Group" : other?.name
+        if (query.trim() && !displayName?.toLowerCase().includes(query.toLowerCase())) return false
         if (filter === "unread") {
             const unread = conv.unreadCounts.find((u) => u.userId === (user?._id ?? ""))?.count ?? 0
             return unread > 0
         }
-        if (filter === "online") return !!(other?.isBot || other?.isOnline)
+        if (filter === "online") return !conv.isGroup && !!(other?.isBot || other?.isOnline)
         return true
     })
 
@@ -313,12 +354,18 @@ export default function ConversationsList() {
             {/* header */}
             <div className="flex items-center justify-between px-4 py-0 lg:py-4">
                 <h1 className="text-lg font-bold">Chats</h1>
-                <Button variant={"outline"} size={"icon"} onClick={() => setNewChatOpen(true)}>
-                    <SquarePen className="size-4" />
-                </Button>
+                <div className="flex items-center gap-1.5">
+                    <Button variant={"outline"} size={"icon"} onClick={() => setNewGroupOpen(true)} title="New group">
+                        <Users className="size-4" />
+                    </Button>
+                    <Button variant={"outline"} size={"icon"} onClick={() => setNewChatOpen(true)} title="New chat">
+                        <SquarePen className="size-4" />
+                    </Button>
+                </div>
             </div>
 
             <NewChatDialog open={newChatOpen} onOpenChange={setNewChatOpen} />
+            <NewGroupDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} />
 
             {/* Search bar */}
             <div className="px-3 pt-2 pb-2 border-b">
@@ -382,6 +429,7 @@ export default function ConversationsList() {
                                 onToggleBlock={handleToggleBlock}
                                 onClearChat={handleClearChatRow}
                                 onTogglePin={handleTogglePin}
+                                onLeaveGroup={handleLeaveGroup}
                                 blockedUsers={blockedUsers}
                             />
                         ))

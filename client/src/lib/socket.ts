@@ -32,7 +32,9 @@ export interface DeleteMessagePayload {
 export interface TypingPayload {
     conversationId: string;
     typer: string;
-    receiverId: string;
+    receiverId?: string;
+    /** Group chats pass every other member's id instead of a single receiverId. */
+    memberIds?: string[];
 }
 
 /* ─── connection helpers ───────────────────────────────────────────────── */
@@ -68,12 +70,12 @@ export const emitDeleteMessage = ({ messageId, conversationId, scope }: DeleteMe
     socket.emit("delete-message", { messageId, conversationId, scope });
 };
 
-export const emitTyping = ({ conversationId, typer, receiverId }: TypingPayload): void => {
-    socket.emit("typing", { conversationId, typer, receiverId });
+export const emitTyping = ({ conversationId, typer, receiverId, memberIds }: TypingPayload): void => {
+    socket.emit("typing", { conversationId, typer, receiverId, memberIds });
 };
 
-export const emitStopTyping = ({ conversationId, typer, receiverId }: TypingPayload): void => {
-    socket.emit("stop-typing", { conversationId, typer, receiverId });
+export const emitStopTyping = ({ conversationId, typer, receiverId, memberIds }: TypingPayload): void => {
+    socket.emit("stop-typing", { conversationId, typer, receiverId, memberIds });
 };
 
 /* ─── raw socket (needed by useEffect listeners in components) ─────────── */

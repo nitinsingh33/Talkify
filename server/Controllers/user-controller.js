@@ -199,6 +199,45 @@ const getNonFriendsList = async (req, res) => {
   }
 };
 
+/**
+ * GET /user/all
+ * Lists every other non-bot, non-deleted user for the group-member picker.
+ * Unlike getNonFriendsList this does NOT exclude people the requester
+ * already has a conversation with — you should be able to add an existing
+ * 1:1 contact to a new group.
+ */
+const getAllUsersList = async (req, res) => {
+  try {
+    const search = (req.query.search || "").trim();
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const baseFilter = {
+      _id: { $ne: req.user.id },
+      isBot: { $ne: true },
+      isDeleted: { $ne: true },
+    };
+
+    if (search) {
+      baseFilter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(baseFilter).sort({ name: 1 }).skip(skip).limit(limit).select("-password -blockedUsers"),
+      User.countDocuments(baseFilter),
+    ]);
+
+    res.json({ users, hasMore: skip + limit < total, total, page });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 const updateprofile = async (req, res) => {
   try {
     const dbuser = await User.findById(req.user.id);
@@ -265,4 +304,4 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-module.exports = { getPresignedUrl, getOnlineStatus, getNonFriendsList, updateprofile, blockUser, unblockUser, getBlockStatus, deleteAccount };
+module.exports = { getPresignedUrl, getOnlineStatus, getNonFriendsList, getAllUsersList, updateprofile, blockUser, unblockUser, getBlockStatus, deleteAccount };

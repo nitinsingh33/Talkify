@@ -19,6 +19,21 @@ const ConversationSchema = new mongoose.Schema(
         },
       },
     ],
+    isGroup: {
+      type: Boolean,
+      default: false,
+    },
+    groupName: {
+      type: String,
+      trim: true,
+    },
+    groupPic: {
+      type: String,
+      default:
+        "https://ui-avatars.com/api/?name=Group&background=6366f1&color=fff&bold=true",
+    },
+    groupAdmins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: true,

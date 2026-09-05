@@ -136,6 +136,51 @@ export const conversationApi = {
             method: "POST",
             headers: headers(),
         }).then((res) => handleResponse<{ isPinned: boolean }>(res)),
+
+    createGroup: <T = unknown>(payload: { name: string; members: string[]; groupPic?: string }) =>
+        fetch(`${API_BASE}/conversation/group`, {
+            method: "POST",
+            headers: headers(),
+            body: JSON.stringify(payload),
+        }).then((res) => handleResponse<T>(res)),
+
+    updateGroup: (id: string, payload: { name?: string; groupPic?: string }) =>
+        fetch(`${API_BASE}/conversation/${id}/group`, {
+            method: "PUT",
+            headers: headers(),
+            body: JSON.stringify(payload),
+        }).then((res) => handleResponse<{ groupName: string; groupPic: string }>(res)),
+
+    addMembers: <T = unknown>(id: string, members: string[]) =>
+        fetch(`${API_BASE}/conversation/${id}/members`, {
+            method: "POST",
+            headers: headers(),
+            body: JSON.stringify({ members }),
+        }).then((res) => handleResponse<T>(res)),
+
+    removeMember: (id: string, userId: string) =>
+        fetch(`${API_BASE}/conversation/${id}/members/${userId}`, {
+            method: "DELETE",
+            headers: headers(),
+        }).then(handleResponse),
+
+    leaveGroup: (id: string) =>
+        fetch(`${API_BASE}/conversation/${id}/leave`, {
+            method: "POST",
+            headers: headers(),
+        }).then(handleResponse),
+
+    promoteAdmin: (id: string, userId: string) =>
+        fetch(`${API_BASE}/conversation/${id}/admins/${userId}`, {
+            method: "POST",
+            headers: headers(),
+        }).then((res) => handleResponse<{ groupAdmins: string[] }>(res)),
+
+    demoteAdmin: (id: string, userId: string) =>
+        fetch(`${API_BASE}/conversation/${id}/admins/${userId}`, {
+            method: "DELETE",
+            headers: headers(),
+        }).then((res) => handleResponse<{ groupAdmins: string[] }>(res)),
 };
 
 /* ─── messages ─────────────────────────────────────────────────────────── */
@@ -185,6 +230,16 @@ export const userApi = {
         fetch(`${API_BASE}/user/online-status/${userId}`, {
             headers: headers(),
         }).then(handleResponse),
+
+    getAllUsers: (params: { search?: string; page?: number; limit?: number } = {}) => {
+        const qs = new URLSearchParams()
+        if (params.search) qs.set("search", params.search)
+        if (params.page)   qs.set("page",   String(params.page))
+        if (params.limit)  qs.set("limit",  String(params.limit))
+        return fetch(`${API_BASE}/user/all?${qs.toString()}`, {
+            headers: headers(),
+        }).then(handleResponse)
+    },
 
     getNonFriends: (params: NonFriendsParams = {}) => {
         const qs = new URLSearchParams()

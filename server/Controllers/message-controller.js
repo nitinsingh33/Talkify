@@ -256,6 +256,46 @@ const sendMessageHandler = async (data) => {
 };
 
 /**
+ * Group variant of sendMessageHandler. Unlike the 1:1 path there is no
+ * single receiver — seenBy is populated for every member currently sitting
+ * in the conversation room, and unread counts are bumped for everyone else.
+ */
+const sendGroupMessageHandler = async ({
+  text,
+  imageUrl,
+  senderId,
+  conversationId,
+  memberIds,
+  membersInRoom,
+  replyTo,
+}) => {
+  const conversation = await Conversation.findById(conversationId);
+  const seenAt = new Date();
+  const seenBy = memberIds
+    .filter((id) => id !== senderId && membersInRoom.has(id))
+    .map((id) => ({ user: id, seenAt }));
+
+  const message = await Message.create({
+    conversationId,
+    senderId,
+    text,
+    imageUrl,
+    seenBy,
+    ...(replyTo && { replyTo }),
+  });
+
+  conversation.latestmessage = text || "sent an image";
+  conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
+    const uid = unread.userId.toString();
+    if (uid === senderId || membersInRoom.has(uid)) return unread;
+    return { userId: unread.userId, count: unread.count + 1 };
+  });
+  await conversation.save();
+  await message.populate('replyTo', 'text imageUrl senderId softDeleted');
+  return message;
+};
+
+/**
  * Used by the socket handler for real-time delete.
  * scope="everyone" → soft-delete (sets softDeleted=true), only sender allowed.
  * scope="me"       → adds requesterId to hiddenFrom.
@@ -369,6 +409,7 @@ module.exports = {
   bulkHide,
   clearChat,
   sendMessageHandler,
+  sendGroupMessageHandler,
   deleteMessageHandler,
   toggleStar,
   getStarredMessages,

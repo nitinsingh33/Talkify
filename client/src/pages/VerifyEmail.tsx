@@ -28,6 +28,9 @@ export default function VerifyEmail() {
         }
     }, [user, navigate])
 
+    // Verification is optional — let the user leave and come back to it later
+    const handleSkip = () => navigate("/user/conversations")
+
     // Auto-send OTP on mount
     useEffect(() => {
         if (user && !user.isEmailVerified) {
@@ -197,19 +200,28 @@ export default function VerifyEmail() {
                         </div>
                     </form>
 
-                    {/* Logout */}
-                    <div className="pt-2 border-t">
-                        <p className="text-center text-sm text-muted-foreground mb-3">
-                            Wrong account?
-                        </p>
+                    {/* Skip / Logout */}
+                    <div className="pt-2 border-t space-y-3">
                         <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={handleLogout}
+                            variant="ghost"
+                            className="w-full text-muted-foreground"
+                            onClick={handleSkip}
                         >
-                            <LogOut className="w-4 h-4 mr-2" />
-                            Log out
+                            Skip for now
                         </Button>
+                        <div>
+                            <p className="text-center text-sm text-muted-foreground mb-3">
+                                Wrong account?
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={handleLogout}
+                            >
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Log out
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

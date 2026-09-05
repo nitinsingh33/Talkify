@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, MoreVertical, Bot, Trash2, CheckCircle, Ban } from "lucide-react"
+import { ArrowLeft, MoreVertical, Bot, Users, Trash2, CheckCircle, Ban, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -27,10 +27,17 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
+import { conversationApi } from "@/lib/api"
+import GroupInfoDialog from "./GroupInfoDialog"
 import type { User } from "@/hooks/use-auth"
+import type { Conversation } from "@/hooks/use-conversations"
 
 interface Props {
     receiver: User | null
+    group?: Conversation | null
+    myId?: string
+    onGroupUpdated?: (conv: Conversation) => void
     onClearChat: () => void
     onSelectMode: () => void
     isBlockedByMe: boolean
@@ -57,13 +64,27 @@ function lastSeenText(receiver: User | null): string {
     return `Last seen ${new Date(receiver.lastSeen).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
 }
 
-export default function ConversationDetailHeader({ receiver, onClearChat, onSelectMode, isBlockedByMe, onBlock, onUnblock }: Props) {
+export default function ConversationDetailHeader({ receiver, group, myId, onGroupUpdated, onClearChat, onSelectMode, isBlockedByMe, onBlock, onUnblock }: Props) {
     const navigate = useNavigate()
     const [profileOpen, setProfileOpen] = useState(false)
     const [clearOpen, setClearOpen] = useState(false)
+    const [leaveOpen, setLeaveOpen] = useState(false)
 
-    const name = receiver?.name ?? "..."
-    const statusText = lastSeenText(receiver)
+    const isGroup = !!group
+    const name = isGroup ? (group.groupName ?? "Group") : (receiver?.name ?? "...")
+    const statusText = isGroup
+        ? `${group.members.length} member${group.members.length !== 1 ? "s" : ""}`
+        : lastSeenText(receiver)
+
+    const handleLeaveGroup = async () => {
+        if (!group) return
+        try {
+            await conversationApi.leaveGroup(group._id)
+            navigate("/user/conversations")
+        } catch {
+            toast.error("Failed to leave group")
+        }
+    }
 
     return (
         <>
@@ -78,19 +99,19 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                     <ArrowLeft className="size-5" />
                 </Button>
 
-                {/* Avatar + name — clickable to open profile */}
+                {/* Avatar + name — clickable to open profile / group info */}
                 <button
                     onClick={() => setProfileOpen(true)}
                     className="flex items-center gap-2.5 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
                 >
                     <div className="relative shrink-0">
                         <Avatar className="size-9">
-                            <AvatarImage src={receiver?.profilePic} alt={name} />
+                            <AvatarImage src={isGroup ? group.groupPic : receiver?.profilePic} alt={name} />
                             <AvatarFallback className="bg-primary/15  text-xs font-semibold">
-                                {receiver?.isBot ? <Bot className="size-4" /> : initials(name)}
+                                {isGroup ? <Users className="size-4" /> : receiver?.isBot ? <Bot className="size-4" /> : initials(name)}
                             </AvatarFallback>
                         </Avatar>
-                        {(receiver?.isBot || receiver?.isOnline) && (
+                        {!isGroup && (receiver?.isBot || receiver?.isOnline) && (
                             <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-green-500 ring-2 ring-background" />
                         )}
                     </div>
@@ -115,7 +136,12 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                             Select messages
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        {!receiver?.isBot && (
+                        {isGroup ? (
+                            <DropdownMenuItem onClick={() => setLeaveOpen(true)} variant="destructive">
+                                <LogOut className="size-4" />
+                                Leave group
+                            </DropdownMenuItem>
+                        ) : !receiver?.isBot && (
                             isBlockedByMe ? (
                                 <DropdownMenuItem onClick={onUnblock}>
                                     <Ban className="size-4" />
@@ -139,7 +165,41 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                 </DropdownMenu>
             </div>
 
-            {/* Profile dialog */}
+            {/* Leave group confirmation */}
+            <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Leave "{name}"?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You will no longer receive messages from this group.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => { setLeaveOpen(false); handleLeaveGroup() }}
+                        >
+                            Leave
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Group info dialog */}
+            {isGroup && group && onGroupUpdated && (
+                <GroupInfoDialog
+                    open={profileOpen}
+                    onOpenChange={setProfileOpen}
+                    group={group}
+                    myId={myId ?? ""}
+                    onGroupUpdated={onGroupUpdated}
+                    onLeft={() => { setProfileOpen(false); navigate("/user/conversations") }}
+                />
+            )}
+
+            {/* Profile dialog (1:1 only) */}
+            {!isGroup && (
             <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
@@ -179,13 +239,14 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                     </div>
                 </DialogContent>
             </Dialog>
+            )}
             {/* Clear chat confirmation */}
             <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Clear chat</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will remove all messages from your view. The other person will still see their messages.
+                            This will remove all messages from your view. {isGroup ? "Other group members" : "The other person"} will still see their messages.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

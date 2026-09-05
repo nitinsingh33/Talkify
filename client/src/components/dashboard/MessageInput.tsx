@@ -21,6 +21,8 @@ interface Props {
     myId: string
     receiverId: string
     receiverName?: string
+    /** For group chats: every other member's id, used for typing broadcast. */
+    otherMemberIds?: string[]
     isReceiverBot?: boolean
     isBlocked?: boolean
     blockedByThem?: boolean
@@ -30,7 +32,7 @@ interface Props {
 
 const STOP_TYPING_DELAY = 1500
 
-export default function MessageInput({ conversationId, myId, receiverId, receiverName, isReceiverBot, isBlocked, blockedByThem, replyToMessage, onCancelReply }: Props) {
+export default function MessageInput({ conversationId, myId, receiverId, receiverName, otherMemberIds, isReceiverBot, isBlocked, blockedByThem, replyToMessage, onCancelReply }: Props) {
     const [text, setText] = useState("")
     const [uploading, setUploading] = useState(false)
     const [imageDialogOpen, setImageDialogOpen] = useState(false)
@@ -46,9 +48,9 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
     const emitStopTypingNow = useCallback(() => {
         if (isTypingRef.current) {
             isTypingRef.current = false
-            emitStopTyping({ conversationId, typer: myId, receiverId })
+            emitStopTyping({ conversationId, typer: myId, receiverId, memberIds: otherMemberIds })
         }
-    }, [conversationId, myId, receiverId])
+    }, [conversationId, myId, receiverId, otherMemberIds])
 
     // Cleanup on unmount
     useEffect(() => {
@@ -73,7 +75,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
 
         if (!isTypingRef.current) {
             isTypingRef.current = true
-            emitTyping({ conversationId, typer: myId, receiverId })
+            emitTyping({ conversationId, typer: myId, receiverId, memberIds: otherMemberIds })
         }
 
         clearTimeout(stopTypingTimer.current!)

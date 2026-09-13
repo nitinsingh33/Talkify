@@ -1,7 +1,7 @@
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle, Star, Reply } from "lucide-react"
+import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle, Star, Reply, SmilePlus } from "lucide-react"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,6 +31,7 @@ interface Props {
     onDelete: (messageId: string, scope: "me" | "everyone") => void
     onStar: (messageId: string) => void
     onReply: (message: Message) => void
+    onReact?: (messageId: string, emoji: string) => void
     // select-mode props
     selectMode?: boolean
     selected?: boolean
@@ -43,7 +44,7 @@ function formatTime(dateStr: string) {
     return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, otherMemberIds, senderName, onDelete, onStar, onReply, selectMode, selected, onToggleSelect, highlighted }: Props) {
+export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, otherMemberIds, senderName, onDelete, onStar, onReply, onReact, selectMode, selected, onToggleSelect, highlighted }: Props) {
     const [hovered, setHovered] = useState(false)
     const [copied, setCopied] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
@@ -68,7 +69,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
             <div
                 data-message-id={message._id}
                 className={cn(
-                    "group flex items-end gap-2",
+                    "group relative flex items-end gap-2",
                     isMine ? "ml-auto flex-row-reverse max-w-[75%]" : isBot ? "mr-auto max-w-[85%]" : "mr-auto max-w-[75%]",
                     selectMode && "cursor-pointer",
                     selectMode && selected && (isMine ? "pr-2" : "pl-2")
@@ -176,6 +177,34 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                     </span>
                 </div>
 
+                {/* Reactions display */}
+                {message.reactions && message.reactions.length > 0 && !message.softDeleted && (
+                    <div className={cn(
+                        "absolute -bottom-3.5 flex flex-wrap gap-1 z-10",
+                        isMine ? "right-3" : "left-3"
+                    )}>
+                        {message.reactions.map((r) => {
+                            const hasReacted = r.users.includes(myId)
+                            return (
+                                <button
+                                    key={r.emoji}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onReact?.(message._id, r.emoji)
+                                    }}
+                                    className={cn(
+                                        "flex items-center gap-1 text-[13px] leading-none transition-transform hover:scale-125",
+                                        hasReacted ? "opacity-100 drop-shadow-md" : "opacity-70 drop-shadow-sm"
+                                    )}
+                                >
+                                    <span>{r.emoji}</span>
+                                    {r.users.length > 1 && <span>{r.users.length}</span>}
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
+
                 {/* Hover action buttons — hidden in select mode or for tombstones (no copy; only hide if mine) */}
                 {!selectMode && (
                     <div
@@ -184,6 +213,36 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                             hovered ? "opacity-100" : "opacity-0 pointer-events-none"
                         )}
                     >
+                        {/* React button */}
+                        {!message.softDeleted && !selectMode && onReact && (
+                            <div className="relative group/react flex items-center justify-center">
+                                <Button
+                                    size={"icon"}
+                                    variant={"secondary"}
+                                    title="React"
+                                    className="flex items-center justify-center size-7 rounded-full"
+                                >
+                                    <SmilePlus className="size-3.5" />
+                                </Button>
+                                {/* Emoji picker popover on hover */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 hidden group-hover/react:flex z-20">
+                                    <div className="flex items-center gap-1 p-1.5 bg-background border rounded-full shadow-lg animate-in fade-in zoom-in duration-200">
+                                        {["👍", "❤️", "😂", "😮", "😢"].map((emoji) => (
+                                            <button
+                                                key={emoji}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onReact(message._id, emoji)
+                                                }}
+                                                className="hover:scale-125 hover:bg-muted rounded-full size-7 flex items-center justify-center transition-all duration-200"
+                                            >
+                                                {emoji}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {/* Reply button — always available except for tombstones */}
                         {!message.softDeleted && !selectMode && (
                             <Button

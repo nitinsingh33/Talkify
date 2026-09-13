@@ -463,6 +463,22 @@ export default function ConversationDetail() {
         }
     }, [setReceiver])
 
+    // ── socket: reaction-updated ─────────────────────────────────────────
+    useEffect(() => {
+        const onReactionUpdated = (data: { messageId: string; conversationId: string; reactions: Array<{ emoji: string; users: string[] }> }) => {
+            if (data.conversationId !== id) return
+            setMessageList((prev) =>
+                prev.map((m) =>
+                    m._id === data.messageId
+                        ? { ...m, reactions: data.reactions }
+                        : m
+                )
+            )
+        }
+        socket.on("reaction-updated", onReactionUpdated)
+        return () => { socket.off("reaction-updated", onReactionUpdated) }
+    }, [id, setMessageList])
+
     // ── socket: message-deleted (soft-delete for everyone OR me-only) ─────────
     useEffect(() => {
         const onDeleted = (data: { messageId: string; conversationId: string; softDeleted: boolean; latestmessage?: string }) => {
@@ -574,6 +590,15 @@ export default function ConversationDetail() {
         }
     }, [id, setMessageList])
 
+    // ── reaction handler ──────────────────────────────────────────────────
+    const handleReact = useCallback(
+        (messageId: string, emoji: string) => {
+            if (!id) return
+            socket.emit("toggle-reaction", { messageId, conversationId: id, emoji })
+        },
+        [id]
+    )
+
     // ── bulk delete selected handler ─────────────────────────────────
     const handleBulkDelete = useCallback(async () => {
         if (selectedIds.size === 0) return
@@ -657,6 +682,7 @@ export default function ConversationDetail() {
                                 onDelete={handleDelete}
                                 onStar={handleStar}
                                 onReply={setReplyingTo}
+                                onReact={handleReact}
                                 selectMode={selectMode}
                                 selected={selectedIds.has(msg._id)}
                                 onToggleSelect={handleToggleSelect}

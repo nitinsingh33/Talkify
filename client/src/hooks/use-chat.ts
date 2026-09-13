@@ -21,6 +21,7 @@ export type Message = {
   hiddenFrom: string[]
   softDeleted: boolean
   starredBy?: string[]
+  reactions?: Array<{ emoji: string; users: string[] }>
   replyTo?: ReplyToPreview | null
   createdAt: string
   updatedAt: string

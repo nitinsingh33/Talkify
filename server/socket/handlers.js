@@ -445,6 +445,61 @@ module.exports = (io, socket, userSocketMap) => {
 
   socket.on("stop-typing", (data) => emitTypingEvent("stop-typing", data));
 
+  // ─── Reactions ─────────────────────────────────────────────────────────────
+  socket.on("toggle-reaction", async (data) => {
+    try {
+      const { messageId, conversationId, emoji } = data;
+      if (!messageId || !conversationId || !emoji) return;
+
+      const message = await Message.findById(messageId);
+      if (!message) return;
+
+      // Verify user is in conversation
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) return;
+      const isMember = conversation.members.some(
+        (m) => m._id.toString() === currentUserId
+      );
+      if (!isMember) return;
+
+      let reactionIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+
+      if (reactionIndex > -1) {
+        const userIndex = message.reactions[reactionIndex].users.findIndex(
+          (uid) => uid.toString() === currentUserId
+        );
+        if (userIndex > -1) {
+          // Remove user from reaction
+          message.reactions[reactionIndex].users.splice(userIndex, 1);
+          // If no users left for this emoji, remove the emoji entry
+          if (message.reactions[reactionIndex].users.length === 0) {
+            message.reactions.splice(reactionIndex, 1);
+          }
+        } else {
+          // Add user to existing emoji reaction
+          message.reactions[reactionIndex].users.push(currentUserId);
+        }
+      } else {
+        // Create new emoji reaction
+        message.reactions.push({
+          emoji,
+          users: [currentUserId],
+        });
+      }
+
+      await message.save();
+
+      // Broadcast updated reactions
+      io.to(conversationId).emit("reaction-updated", {
+        messageId,
+        conversationId,
+        reactions: message.reactions,
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Error in toggle-reaction handler");
+    }
+  });
+
   // ─── Disconnect ────────────────────────────────────────────────────────────
   // Only mark the user offline when ALL their sockets have disconnected
   // (i.e. they closed every tab/device), not just one of them.
